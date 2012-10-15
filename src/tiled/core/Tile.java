@@ -17,20 +17,24 @@ import java.awt.image.BufferedImage;
 import java.util.Properties;
 
 /**
- * The core class for our tiles.
+ * The core class for our tiles. 
+ * Image data of a <code>Tile</code> can be an element of a {@link TileSet}, and hence referred 
+ * to by an image-id number, or alternatively be stored individually, "internal", in the tile. 
  *
  * @version $Id$
  */
 public class Tile
 {
-    private Image internalImage, scaledImage;
-    private int id = -1;
-    protected int tileImageId = -1;
-    private int groundHeight;          // Height above/below "ground"
-    private int tileOrientation;
-    private double myZoom = 1.0;
     private Properties properties;
     private TileSet tileset;
+    private Image internalImage;
+    private Image scaledImage;
+    
+    private int id = -1;
+    protected int tileImageId = -1;
+    // Comment: groundHeight does not seem to be active anywhere
+    private int groundHeight;          // Height above/below "ground"
+    private double myZoom = 1.0;
 
     public Tile() {
         properties = new Properties();
@@ -68,43 +72,44 @@ public class Tile
     }
 
     /**
-     * Changes the image of the tile as long as it is not null.
+     * Changes the image of the tile.
+     * If there is a parent tileset defined, the new image
+     * is transferred to it (if not <b>null</b>).
      *
      * @param i the new image of the tile
      */
     public void setImage(Image i) {
         if (tileset != null) {
-            tileset.overlayImage(tileImageId, i);
+            if (i != null) {
+                tileset.overlayImage(tileImageId, i);
+            }
         } else {
             internalImage = i;
         }
     }
 
-    public void setImage(int id) {
-        tileImageId = id;
-    }
-
-    /**
-     * @deprecated
-     * @param orientation
+    /** Sets the tileset image ID to activate its image for this tile.
+     * 
+     * @param id int tileset image ID
      */
-    public void setImageOrientation(int orientation) {
-        tileOrientation = orientation;
+    public void setImageId(int id) {
+        tileImageId = id;
     }
 
     /**
      * Sets the parent tileset for a tile. If the tile is already
      * a member of a set, and this method is called with a different
-     * set as argument, the tile image is transferred to the new set.
+     * set as argument, or if there is an internal image defined,
+     * the current tile image is transferred to the new set.
      *
      * @param set
      */
     public void setTileSet(TileSet set) {
         if (tileset != null && tileset != set) {
-            setImage(set.addImage(getImage()));
+            setImageId(set.addImage(getImage()));
         } else {
             if (internalImage != null) {
-                setImage(set.addImage(internalImage));
+                setImageId(set.addImage(internalImage));
                 internalImage = null;
             }
         }
@@ -153,7 +158,7 @@ public class Tile
      * This drawing function handles drawing the tile image at the
      * specified zoom level. It will attempt to use a cached copy,
      * but will rescale if the requested zoom does not equal the
-     * current cache zoom.
+     * current cache zoom. (This does not take into account "groundHeight".)
      *
      * @param g Graphics instance to draw to
      * @param x x-coord to draw tile at
@@ -172,7 +177,9 @@ public class Tile
 
     /**
      * Draws the tile at the given pixel coordinates in the given
-     * graphics context, and at the given zoom level
+     * graphics context, and at the given zoom level.
+     * The difference to <code>drawRaw</code> is that this method
+     * takes reference to <code>groundHeight</code>.
      *
      * @param g
      * @param x
@@ -185,36 +192,30 @@ public class Tile
         drawRaw(g, x, y - gnd_h, zoom);
     }
 
+    /** Size of the original image width in pixels. 
+     * 
+     * @return int image pixel width
+     */
     public int getWidth() {
-        if (tileset != null) {
-            Dimension d = tileset.getImageDimensions(tileImageId);
-            return d.width;
-        } else if (internalImage != null){
-            return internalImage.getWidth(null);
-        }
-        return 0;
+        Image i = tileset == null ? internalImage : tileset.getImage(tileImageId);
+        return i == null ? 0 : i.getWidth(null);
     }
 
+    /** Size of the original image height in pixels. 
+     * 
+     * @return int image pixel height
+     */
     public int getHeight() {
-        if (tileset != null) {
-            Dimension d = tileset.getImageDimensions(tileImageId);
-            return d.height;
-        } else if (internalImage != null) {
-            return internalImage.getHeight(null);
-        }
-        return 0;
+        Image i = tileset == null ? internalImage : tileset.getImage(tileImageId);
+        return i == null ? 0 : i.getHeight(null);
     }
 
+    /** The image ID in the associated tileset. 
+     * 
+     * @return int tileset image id
+     */
     public int getImageId() {
         return tileImageId;
-    }
-
-    /**
-     * @deprecated
-     * @return int
-     */
-    public int getImageOrientation() {
-        return tileOrientation;
     }
 
     /**
@@ -224,7 +225,7 @@ public class Tile
      */
     public Image getImage() {
         if (tileset != null) {
-            return tileset.getImageById(tileImageId);
+            return tileset.getImage(tileImageId);
         } else {
             return internalImage;
         }
@@ -271,7 +272,8 @@ public class Tile
     }
 
     /**
-     * @see java.lang.Object#toString()
+     * Info string stating "Tile" with ID-nr and original image dimension.
+     * @return String
      */
     public String toString() {
         return "Tile " + id + " (" + getWidth() + "x" + getHeight() + ")";

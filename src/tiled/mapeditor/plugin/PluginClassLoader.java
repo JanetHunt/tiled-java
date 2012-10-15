@@ -177,14 +177,15 @@ public final class PluginClassLoader extends URLClassLoader
     }
 
     public Object getReaderFor(String file) throws Exception {
+    	file = file.toLowerCase();
         for (String key : readerFormats.keySet()) {
             String ext = key.substring(1);
-            if (file.toLowerCase().endsWith(ext)) {
+            if (file.endsWith(ext)) {
                 return loadClass(readerFormats.get(key)).newInstance();
             }
         }
         throw new Exception(
-                "No reader plugin exists for this file type.");
+                "No reader plugin exists for this file type" ); 
     }
 
     public Object getWriterFor(String file) throws Exception {

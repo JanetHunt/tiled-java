@@ -194,7 +194,7 @@ public class MapHelper {
         TileSet ret = null;
         try {
             MapReader mr;
-            if (file.endsWith(".tsx")) {
+            if (file.toLowerCase().endsWith(".tsx")) {
                 // Override, so people can't overtake our format
                 mr = new XMLMapTransformer();
             } else {

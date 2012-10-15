@@ -289,9 +289,9 @@ public class Map extends MultilayerPlane implements MapLayerChangeListener
             return;
 
         // Go through the map and remove any instances of the tiles in the set
-        Iterator<Object> tileIterator = tileset.iterator();
+        Iterator<Tile> tileIterator = tileset.iterator();
         while (tileIterator.hasNext()) {
-            Tile tile = (Tile)tileIterator.next();
+            Tile tile = tileIterator.next();
             Iterator<MapLayer> layerIterator = getLayers();
             while (layerIterator.hasNext()) {
                 MapLayer ml = (MapLayer) layerIterator.next();

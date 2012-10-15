@@ -296,12 +296,11 @@ public class XMLMapWriter implements MapWriter
             w.endElement();
 
             // Write tile properties when necessary.
-            Iterator<Object> tileIterator = set.iterator();
+            Iterator<Tile> tileIterator = set.iterator();
 
             while (tileIterator.hasNext()) {
-                Tile tile = (Tile) tileIterator.next();
-                // todo: move the null check back into the iterator?
-                if (tile != null && !tile.getProperties().isEmpty()) {
+                Tile tile = tileIterator.next();
+                if (!tile.getProperties().isEmpty()) {
                     w.startElement("tile");
                     w.writeAttribute("id", tile.getId());
                     writeProperties(tile.getProperties(), w);
@@ -325,11 +324,10 @@ public class XMLMapWriter implements MapWriter
                 //       <image>
                 //         ....
                 // is produced. embedImageData
-                Enumeration<String> ids = set.getImageIds();
-                while (ids.hasMoreElements()) {
-                    String idString = ids.nextElement();
-                    int id = Integer.parseInt(idString);
-                    Image image = set.getImageById(id);
+                Iterator<Integer> ids = set.getImageIds();
+                while (ids.hasNext()) {
+                    int id = ids.next();
+                    Image image = set.getImage(id);
                     String imagePath = set.getImageSource(id);
                     
                     // if images are not to be embedded, we need the actual source
@@ -345,7 +343,7 @@ public class XMLMapWriter implements MapWriter
             }
 
             // Check to see if there is a need to write tile elements
-            Iterator<Object> tileIterator = set.iterator();
+            Iterator<Tile> tileIterator = set.iterator();
             boolean needWrite = !set.isOneForOne();
 
             if (!tileSetImages) {
@@ -365,11 +363,8 @@ public class XMLMapWriter implements MapWriter
             if (needWrite) {
                 tileIterator = set.iterator();
                 while (tileIterator.hasNext()) {
-                    Tile tile = (Tile)tileIterator.next();
-                    // todo: move this check back into the iterator?
-                    if (tile != null) {
-                        writeTile(tile, set, wp, w);
-                    }
+                    Tile tile = tileIterator.next();
+                    writeTile(tile, set, wp, w);
                 }
             }
         }

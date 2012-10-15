@@ -239,7 +239,7 @@ public class TileDialog extends JDialog
             currentTile.getImageId());
         dialog.setVisible(true);
         if (dialog.getImageId() >= 0) {
-            currentTile.setImage(dialog.getImageId());
+            currentTile.setImageId(dialog.getImageId());
         }
     }
 
@@ -318,11 +318,9 @@ public class TileDialog extends JDialog
     public void queryImages() {
         Vector<Image> listData = new Vector<Image>();
 
-        Enumeration<String> ids = tileset.getImageIds();
-        while(ids.hasMoreElements()) {
-            Image img = tileset.getImageById(Integer.parseInt(ids.nextElement()));
-            if (img != null)
-                listData.add(img);
+        Iterator<Image> imgs = tileset.getImageIterator();
+        while( imgs.hasNext() ) {
+            listData.add(imgs.next());
         }
 
         imageList.setListData(listData);
@@ -464,7 +462,7 @@ public class TileDialog extends JDialog
 
             for (Object img : imgs) {
                 Tile newTile = new Tile(tileset);
-                newTile.setImage(tileset.getIdByImage((Image) img));
+                newTile.setImageId(tileset.getIdByImage((Image) img));
                 tileset.addNewTile(newTile);
             }
 

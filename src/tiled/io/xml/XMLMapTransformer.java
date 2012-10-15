@@ -67,7 +67,7 @@ public class XMLMapTransformer implements MapReader
         return url;
     }
 
-    private static int reflectFindMethodByName(Class c, String methodName) {
+    private static int reflectFindMethodByName(Class<?> c, String methodName) {
         Method[] methods = c.getMethods();
         for (int i = 0; i < methods.length; i++) {
             if (methods[i].getName().equalsIgnoreCase(methodName)) {
@@ -80,7 +80,7 @@ public class XMLMapTransformer implements MapReader
     private void reflectInvokeMethod(Object invokeVictim, Method method,
             String[] args) throws Exception
     {
-        Class[] parameterTypes = method.getParameterTypes();
+        Class<?>[] parameterTypes = method.getParameterTypes();
         Object[] conformingArguments = new Object[parameterTypes.length];
 
         if (args.length < parameterTypes.length) {
@@ -548,7 +548,7 @@ public class XMLMapTransformer implements MapReader
                 if (id < 0) {
                     id = set.addImage(img, src);
                 }
-                tile.setImage(id);
+                tile.setImageId(id);
             } else if ("animation".equalsIgnoreCase(child.getNodeName())) {
                 // TODO: fill this in once XMLMapWriter is complete
             }

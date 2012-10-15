@@ -13,13 +13,26 @@
 
 package tiled.mapeditor.dialogs;
 
-import java.awt.*;
+import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.Enumeration;
-import java.util.Vector;
 import java.util.Arrays;
-import javax.swing.*;
+import java.util.Iterator;
+import java.util.Vector;
+
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
@@ -120,17 +133,17 @@ public class TileImageDialog extends JDialog implements ListSelectionListener
         Vector<Image> listData = new Vector<Image>();
         int initialIndex = 0;
 
-        Enumeration<String> ids = tileset.getImageIds();
+        Iterator<Integer> ids = tileset.getImageIds();
         imageIds = new int[tileset.getTotalImages()];
         for (int i = 0; i < imageIds.length; ++i) {
-            imageIds[i] = Integer.parseInt(ids.nextElement());
+            imageIds[i] = ids.next();
         }
 
         Arrays.sort(imageIds);
 
         for (int i = 0; i < imageIds.length; ++i) {
             if (imageIds[i] == imageId) initialIndex = i;
-            Image img = tileset.getImageById(imageIds[i]);
+            Image img = tileset.getImage(imageIds[i]);
             // assert img != null;
             listData.add(img);
         }
@@ -146,7 +159,7 @@ public class TileImageDialog extends JDialog implements ListSelectionListener
 
     private void updateImageLabel() {
         if (imageId >= 0) {
-            Image img = tileset.getImageById(imageId);
+            Image img = tileset.getImage(imageId);
             imageLabel.setIcon(new ImageIcon(img));
         }
     }

@@ -139,9 +139,9 @@ public class SearchDialog extends JDialog implements ActionListener
         for (TileSet set : map.getTilesets()) {
             b.addItem(set);
 
-            final Iterator<Object> tileIterator = set.iterator();
+            final Iterator<Tile> tileIterator = set.iterator();
             while (tileIterator.hasNext()) {
-                Tile tile = (Tile) tileIterator.next();
+                Tile tile = tileIterator.next();
                 b.addItem(tile);
             }
         }

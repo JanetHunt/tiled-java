@@ -37,8 +37,15 @@ import tiled.util.NumberedSet;
  */
 public class TileSet
 {
+    /** Base directory for the tileset (native format) */
     private String base;
-    private NumberedSet tiles, images;
+    
+    /** Ordered set of Tiles; map from integer to Tile, with integer >= 0 and unique. */
+    private NumberedSet<Tile> tiles;
+
+    /** Ordered set of Images; map from integer to Image, with integer >= 0 and unique. */
+    private NumberedSet<Image> images;
+    
     private int firstGid;
     private long tilebmpFileLastModified;
     private TileCutter tileCutter;
@@ -59,11 +66,11 @@ public class TileSet
      * Default constructor
      */
     public TileSet() {
-        tiles = new NumberedSet();
-        images = new NumberedSet();
+        tiles = new NumberedSet<Tile>();
+        images = new NumberedSet<Image>();
         tileDimensions = new Rectangle();
         defaultTileProperties = new Properties();
-        tilesetChangeListeners = new LinkedList();
+        tilesetChangeListeners = new LinkedList<TilesetChangeListener>();
     }
 
     /**
@@ -130,7 +137,7 @@ public class TileSet
         Image tile = cutter.getNextTile();
         while (tile != null) {
             Tile newTile = new Tile();
-            newTile.setImage(addImage(tile));
+            newTile.setImageId(addImage(tile));
             addNewTile(newTile);
             tile = cutter.getNextTile();
         }
@@ -274,15 +281,15 @@ public class TileSet
     }
 
     /**
-     * Adds the tile to the set, setting the id of the tile only if the current
-     * value of id is -1.
+     * Adds or puts the tile to the set, setting the id of the tile only
+     * if the current value of id is -1.
      *
      * @param t the tile to add
      * @return int The <b>local</b> id of the tile
      */
     public int addTile(Tile t) {
         if (t.getId() < 0) {
-            t.setId(tiles.getMaxId() + 1);
+            t.setId(tiles.getLastId() + 1);
         }
 
         if (tileDimensions.width < t.getWidth()) {
@@ -312,10 +319,11 @@ public class TileSet
      *
      * @see TileSet#addTile(Tile)
      * @param t the new tile to add.
+     * @return int tile id
      */
-    public void addNewTile(Tile t) {
+    public int addNewTile(Tile t) {
         t.setId(-1);
-        addTile(t);
+        return addTile(t);
     }
 
     /**
@@ -323,15 +331,13 @@ public class TileSet
      * indices. Removal is simply setting the reference at the specified
      * index to <b>null</b>.
      *
-     * todo: Fix the behaviour of this function? It actually does seem to
-     * todo: invalidate other tile indices due to implementation of
-     * todo: NumberedSet.
-     *
      * @param i the index to remove
+     * @return <code>Tile</code> removed tile or null
      */
-    public void removeTile(int i) {
-        tiles.remove(i);
+    public Tile removeTile(int i) {
+        Tile t = tiles.remove(i);
         fireTilesetChanged();
+        return t;
     }
 
     /**
@@ -349,7 +355,7 @@ public class TileSet
      * @return the maximum tile id, or -1 when there are no tiles
      */
     public int getMaxTileId() {
-        return tiles.getMaxId();
+        return tiles.getLastId();
     }
 
     /**
@@ -357,7 +363,7 @@ public class TileSet
      *
      * @return an iterator over the tiles in this tileset.
      */
-    public Iterator iterator() {
+    public Iterator<Tile> iterator() {
         return tiles.iterator();
     }
 
@@ -372,7 +378,9 @@ public class TileSet
         Vector<Tile> gapless = new Vector<Tile>();
 
         for (int i = 0; i <= getMaxTileId(); i++) {
-            if (getTile(i) != null) gapless.add(getTile(i));
+            Tile t = getTile(i);
+            if (t != null) 
+                gapless.add(t);
         }
 
         return gapless;
@@ -435,10 +443,7 @@ public class TileSet
      *         tile exists with that id
      */
     public Tile getTile(int i) {
-        try {
-            return (Tile) tiles.get(i);
-        } catch (ArrayIndexOutOfBoundsException a) {}
-        return null;
+        return (Tile) tiles.get(i);
     }
 
     /**
@@ -449,8 +454,8 @@ public class TileSet
      */
     public Tile getFirstTile() {
         Tile ret = null;
-        int i = 0;
-        while (ret == null && i <= getMaxTileId()) {
+        int i = 0, topTile = getMaxTileId();
+        while (ret == null && i <= topTile) {
             ret = getTile(i);
             i++;
         }
@@ -537,18 +542,26 @@ public class TileSet
     }
 
     /**
-     * @return an Enumeration of the image ids
-     */
-    public Enumeration<String> getImageIds() {
-        Vector<String> v = new Vector();
-        for (int id = 0; id <= images.getMaxId(); ++id) {
+     * @return an Iterator of the image ids (<code>Integer</code>).
+    */
+    public Iterator<Integer> getImageIds() {
+        ArrayList<Integer> list = new ArrayList<Integer>();
+        int id, topId = images.getLastId();
+        for ( id = 0; id <= topId; ++id ) {
             if (images.containsId(id)) {
-                v.add(Integer.toString(id));
+                list.add(id);
             }
         }
-        return v.elements();
+        return list.iterator();
     }
 
+    /**
+     * @return an <code>Iterator</code> over all images; renders <code>Image</code> objects.
+     */
+    public Iterator<Image> getImageIterator () {
+    	return images.iterator();
+    }
+    
     // TILE IMAGE CODE
 
     /**
@@ -560,7 +573,7 @@ public class TileSet
      *         the set
      */
     public int getIdByImage(Image i) {
-        return images.indexOf(i);
+        return images.getIdOf(i);
     }
 
     /**
@@ -568,7 +581,7 @@ public class TileSet
      * @return the image identified by the key, or <code>null</code> when
      *         there is no such image
      */
-    public Image getImageById(int id) {
+    public Image getImage(int id) {
         return (Image) images.get(id);
     }
     
@@ -595,25 +608,6 @@ public class TileSet
     }
 
     /**
-     * Returns the dimensions of an image as specified by the id.
-     *
-     * @deprecated Unless somebody can explain the purpose of this function in
-     *             its documentation, I consider this function deprecated. It
-     *             is only used by tiles, but they should in my opinion just
-     *             use their "internalImage". - Bjorn
-     * @param id the image id
-     * @return dimensions of image with referenced by given key
-     */
-    public Dimension getImageDimensions(int id) {
-        Image img = (Image) images.get(id);
-        if (img != null) {
-            return new Dimension(img.getWidth(null), img.getHeight(null));
-        } else {
-            return new Dimension(0, 0);
-        }
-    }
-
-    /**
      * Adds the specified image to the image cache. If the image already exists
      * in the cache, returns the id of the existing image. If it does not
      * exist, this function adds the image and returns the new id.
@@ -624,7 +618,7 @@ public class TileSet
      * @return the id as an <code>int</code> of the image in the cache
      */
     public int addImage(Image image, String imageSource) {
-        int id = images.findOrAdd(image);
+        int id = images.ensureElement(image);
         if(imageSource != null)
             imageSources.put(id, imageSource);
         return id;
@@ -638,7 +632,8 @@ public class TileSet
         if(imgSource != null)
             imageSources.put(id, imgSource);
         
-        return images.put(id, image);
+        images.put(id, image);
+        return id;
     }
 
     public void removeImage(int id) {
@@ -663,7 +658,7 @@ public class TileSet
      *         one tile, <code>false</code> otherwise.
      */
     public boolean isOneForOne() {
-        Iterator itr = iterator();
+        Iterator<Tile> itr = iterator();
 
         //[ATURK] I don't think that this check makes complete sense...
         /*
@@ -676,14 +671,13 @@ public class TileSet
         }
         */
 
-        for (int id = 0; id <= images.getMaxId(); ++id) {
+        for (int id = 0; id <= images.getLastId(); ++id) {
             int relations = 0;
             itr = iterator();
 
             while (itr.hasNext()) {
                 Tile t = (Tile) itr.next();
-                // todo: move the null check back into the iterator?
-                if (t != null && t.getImageId() == id) {
+                if (t.getImageId() == id) {
                     relations++;
                 }
             }

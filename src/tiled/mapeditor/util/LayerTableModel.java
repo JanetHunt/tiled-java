@@ -57,7 +57,7 @@ public class LayerTableModel extends AbstractTableModel
     public void setMap(MultilayerPlane map) {
         if(this.map == map)
             return;
-        if(this.map != null){
+        if (map != null) {
             try {
                 ((Map)map).removeMapChangeListener(listener);
             }catch(ClassCastException ccx){

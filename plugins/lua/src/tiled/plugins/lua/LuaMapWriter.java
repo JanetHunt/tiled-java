@@ -272,12 +272,11 @@ public class LuaMapWriter implements MapWriter
             endTable();
 
             // Write tile properties when necessary.
-            Iterator<Object> tileIterator = set.iterator();
+            Iterator<Tile> tileIterator = set.iterator();
 
             while (tileIterator.hasNext()) {
                 Tile tile = (Tile) tileIterator.next();
-                // todo: move the null check back into the iterator?
-                if (tile != null && !tile.getProperties().isEmpty()) {
+                if (!tile.getProperties().isEmpty()) {
                     startTable();
                     writelnKeyAndValue("label", "tile");
                     writelnKeyAndValue("id", tile.getId());
