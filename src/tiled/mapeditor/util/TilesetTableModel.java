@@ -12,11 +12,17 @@
 
 package tiled.mapeditor.util;
 
-import java.util.Iterator;
-import java.util.Vector;
+import java.util.List;
+
 import javax.swing.table.AbstractTableModel;
 
-import tiled.core.*;
+import tiled.core.Map;
+import tiled.core.MapChangeListener;
+import tiled.core.MapChangedEvent;
+import tiled.core.MapLayerChangeEvent;
+import tiled.core.TileSet;
+import tiled.core.TilesetChangeListener;
+import tiled.core.TilesetChangedEvent;
 import tiled.mapeditor.Resources;
 
 public class TilesetTableModel extends AbstractTableModel implements MapChangeListener, TilesetChangeListener
@@ -52,7 +58,7 @@ public class TilesetTableModel extends AbstractTableModel implements MapChangeLi
     }
 
     public Object getValueAt(int row, int col) {
-        Vector tilesets = map.getTilesets();
+        List<TileSet> tilesets = map.getTilesets();
         if (row >= 0 && row < tilesets.size()) {
             TileSet tileset = (TileSet)tilesets.get(row);
             if (col == 0) {
@@ -78,7 +84,7 @@ public class TilesetTableModel extends AbstractTableModel implements MapChangeLi
     public void setValueAt(Object value, int row, int col) {
         if (col != 0) return;
 
-        Vector tilesets = map.getTilesets();
+        List<TileSet> tilesets = map.getTilesets();
         if (row >= 0 && row < tilesets.size()) {
             TileSet tileset = (TileSet)tilesets.get(row);
             if (col == 0) {
@@ -87,7 +93,7 @@ public class TilesetTableModel extends AbstractTableModel implements MapChangeLi
             fireTableCellUpdated(row, col);
         }
     }
-
+/*
     private int checkSetUsage(TileSet set) {
         int used = 0;
         Iterator tileIterator = set.iterator();
@@ -110,7 +116,7 @@ public class TilesetTableModel extends AbstractTableModel implements MapChangeLi
 
         return used;
     }
-
+*/
     public void mapChanged(MapChangedEvent event) {
     }
 
@@ -161,8 +167,8 @@ public class TilesetTableModel extends AbstractTableModel implements MapChangeLi
     }
 
     public void clearListeners() {
-        for (Iterator it = map.getTilesets().iterator(); it.hasNext();) {
-            ((TileSet) it.next()).removeTilesetChangeListener(this);
+        for (TileSet s : map.getTilesets()) {
+            s.removeTilesetChangeListener(this);
         }
     }
 

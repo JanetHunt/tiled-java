@@ -18,6 +18,7 @@ import java.awt.geom.Area;
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.Stack;
 import java.util.Vector;
@@ -572,7 +573,7 @@ public class MapEditor implements ActionListener, MouseListener,
         viewMenu.add(gridMenuItem);
         viewMenu.add(cursorMenuItem);
         viewMenu.add(new JCheckBoxMenuItem(toggleParallaxModeAction));
-        //TODO: Enable when boudary drawing code finished.
+        //TODO: Enable when boundary drawing code finished.
         //viewMenu.add(boundaryMenuItem);
         viewMenu.add(coordinatesMenuItem);
 
@@ -838,9 +839,11 @@ public class MapEditor implements ActionListener, MouseListener,
         final boolean objectGroup =
                 validSelection && getCurrentLayer() instanceof ObjectGroup;
         
-        if(validSelection){
+        if(validSelection) {
             MapLayer l = getCurrentLayer();
-            cursorHighlight.setTileDimensions(l.getTileWidth(), l.getTileHeight());
+            if (l != null) {
+                cursorHighlight.setTileDimensions(l.getTileWidth(), l.getTileHeight());
+            }
         }
         
         paintButton.setEnabled(tileLayer);
@@ -907,7 +910,7 @@ public class MapEditor implements ActionListener, MouseListener,
     /**
      * Returns the currently selected layer.
      *
-     * @return the currently selected layer
+     * @return the currently selected layer or <b>null</b> if nothing is selected
      */
     public MapLayer getCurrentLayer() {
         return currentMap.getLayer(currentLayer);
@@ -916,7 +919,7 @@ public class MapEditor implements ActionListener, MouseListener,
     /**
      * Returns the currently selected layer index.
      *
-     * @return the currently selected layer index
+     * @return the currently selected layer index or -1 if nothing is selected
      */
     public int getCurrentLayerIndex() {
         return currentLayer;
@@ -1530,7 +1533,7 @@ public class MapEditor implements ActionListener, MouseListener,
             }
         } else if (command.equals(Resources.getString("menu.tilesets.refresh"))) {
             if (currentMap != null) {
-                Vector<TileSet> tilesets = currentMap.getTilesets();
+                List<TileSet> tilesets = currentMap.getTilesets();
                 for (TileSet tileset : tilesets) {
                     try {
                         tileset.checkUpdate();
@@ -1646,8 +1649,11 @@ public class MapEditor implements ActionListener, MouseListener,
         if (currentMap != null && selectedRow >= 0) {
             setCurrentLayerIndex(currentMap.getTotalLayers() - selectedRow - 1);
 
-            float opacity = getCurrentLayer().getOpacity();
-            opacitySlider.setValue((int)(opacity * 100));
+            MapLayer layer = getCurrentLayer();
+            if (layer != null) {
+                float opacity = layer.getOpacity();
+                opacitySlider.setValue((int)(opacity * 100));
+            }
         } else {
             setCurrentLayerIndex(-1);
         }
@@ -2350,7 +2356,7 @@ public class MapEditor implements ActionListener, MouseListener,
 
             // Get the first non-null tile from the first tileset containing
             // non-null tiles.
-            Vector<TileSet> tilesets = currentMap.getTilesets();
+            List<TileSet> tilesets = currentMap.getTilesets();
             Tile firstTile = null;
             if (!tilesets.isEmpty()) {
                 Iterator<TileSet> it = tilesets.iterator();

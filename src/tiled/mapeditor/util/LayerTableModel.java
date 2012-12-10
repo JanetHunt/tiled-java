@@ -37,6 +37,29 @@ public class LayerTableModel extends AbstractTableModel
 
     private MapChangeListener listener = new MapChangeAdapter(){
         @Override
+        public void layerAdded(MapChangedEvent e) {
+            if(e.getMap() != map)
+                return;
+            int row = getRowCount()-e.getLayerIndex()-1;
+            fireTableRowsInserted(row, row);
+        }
+
+        @Override
+        public void layerRemoved(MapChangedEvent e) {
+            if(e.getMap() != map)
+                return;
+            int row = getRowCount()-e.getLayerIndex()-1;
+            fireTableRowsDeleted(row, row);
+        }
+
+        @Override
+        public void layerMoved(MapChangedEvent e) {
+            if(e.getMap() != map)
+                return;
+            fireTableDataChanged();
+        }
+
+        @Override
         public void layerChanged(MapChangedEvent e, MapLayerChangeEvent mlce) {
             if(e.getMap() != map)
                 return;

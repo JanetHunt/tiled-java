@@ -48,7 +48,7 @@ public class TileLayer extends MapLayer
     }
 
     /**
-     * Default contructor.
+     * Default constructor.
      */
     public TileLayer() {
     }

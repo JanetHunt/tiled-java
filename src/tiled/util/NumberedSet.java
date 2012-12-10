@@ -30,7 +30,7 @@ import java.util.NoSuchElementException;
  * @author rainerd
  * @author janetHunt modified and corrected, 10.2012
  */
-public class NumberedSet<E> implements Cloneable
+public class NumberedSet<E> implements Cloneable, Iterable<E>
 {
     private ArrayList<E> data;
     private int size;
@@ -114,6 +114,15 @@ public class NumberedSet<E> implements Cloneable
 	        }
         }
         return result;
+    }
+
+    /** Removes all elements from in this NumberedSet.
+     * After performing this method the size of the set is zero.
+     */
+    public synchronized void clear() {
+        data.clear();
+        size = 0;
+        modifyNr++;
     }
 
     /**
@@ -275,14 +284,5 @@ public class NumberedSet<E> implements Cloneable
 		public void remove() {
 			throw new UnsupportedOperationException();			
 		}
-    }
-
-    /** Removes all elements from in this NumberedSet.
-     * After performing this method the size of the set is zero.
-     */
-    public synchronized void clear() {
-        data.clear();
-        size = 0;
-        modifyNr++;
     }
 }

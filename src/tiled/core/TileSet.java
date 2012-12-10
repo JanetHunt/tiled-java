@@ -31,7 +31,7 @@ import tiled.util.NumberedSet;
  * advanced internal functions aimed at reducing unnecessary data replication.
  * A 'tile' is represented internally as two distinct pieces of data. The
  * first and most important is a {@link Tile} object, and these are held in
- * a {@link Vector}.</p>
+ * a {@link NumberedSet}.</p>
  *
  * <p>The other is the tile image.</p>
  */
@@ -720,5 +720,9 @@ public class TileSet
         for (TilesetChangeListener listener : tilesetChangeListeners) {
             listener.sourceChanged(event, oldSource, newSource);
         }
+    }
+
+    public Iterable<Tile> getTilesIterable() {
+        return tiles;
     }
 }

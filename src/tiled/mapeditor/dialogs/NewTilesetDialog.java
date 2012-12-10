@@ -16,6 +16,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Properties;
 import java.util.Vector;
 
@@ -353,7 +354,7 @@ public class NewTilesetDialog extends JDialog implements ChangeListener
     }
 
     private void createSetAndDispose() {
-       Vector<TileSet> tilesets =  layer.getMap().getTilesets();
+       List<TileSet> tilesets =  layer.getMap().getTilesets();
        for(TileSet tileset : tilesets)
        {
             if(tileset.getName().compareTo(tilesetName.getText()) == 0)

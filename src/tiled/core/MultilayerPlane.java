@@ -12,8 +12,12 @@
 
 package tiled.core;
 
+import java.awt.Point;
 import java.awt.Rectangle;
-import java.util.*;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.ListIterator;
+import java.util.Vector;
 
 /**
  * MultilayerPlane makes up the core functionality of both Maps and Brushes.
@@ -22,7 +26,7 @@ import java.util.*;
 public class MultilayerPlane implements Iterable<MapLayer>
 {
     private Vector<MapLayer> layers;
-    protected Rectangle bounds;          //in tiles
+    protected Rectangle bounds;          //coordinate values in "tiles"
 
     /**
      * Default constructor.
@@ -95,6 +99,7 @@ public class MultilayerPlane implements Iterable<MapLayer>
     void insertLayer(int index, MapLayer layer) {
         layers.add(index, layer);
     }
+    
     public void setLayer(int index, MapLayer layer) {
         layers.set(index, layer);
     }
@@ -155,9 +160,11 @@ public class MultilayerPlane implements Iterable<MapLayer>
                     "Can't swap up when already at the top.");
         }
 
-        MapLayer hold = layers.get(index + 1);
-        layers.set(index + 1, getLayer(index));
-        layers.set(index, hold);
+        synchronized ( layers ) {
+            MapLayer hold = layers.get(index + 1);
+            layers.set(index + 1, getLayer(index));
+            layers.set(index, hold);
+        }
     }
 
     /**
@@ -171,9 +178,11 @@ public class MultilayerPlane implements Iterable<MapLayer>
                     "Can't swap down when already at the bottom.");
         }
 
-        MapLayer hold = layers.get(index - 1);
-        layers.set(index - 1, getLayer(index));
-        layers.set(index, hold);
+        synchronized ( layers ) {
+            MapLayer hold = layers.get(index - 1);
+            layers.set(index - 1, getLayer(index));
+            layers.set(index, hold);
+        }
     }
 
     /**
@@ -187,19 +196,21 @@ public class MultilayerPlane implements Iterable<MapLayer>
             throw new RuntimeException("Can't merge down bottom layer.");
         }
 
-        // TODO: We're not accounting for different types of layers!!!
-        TileLayer ntl;
-        try {
-            ntl = (TileLayer) getLayer(index - 1).clone();
+        synchronized ( layers ) {
+            // TODO: We're not accounting for different types of layers!!!
+            TileLayer ntl;
+            try {
+                ntl = (TileLayer) getLayer(index - 1).clone();
+            }
+            catch (CloneNotSupportedException e) {
+                e.printStackTrace();
+                return;
+            }
+    
+            getLayer(index).mergeOnto(ntl);
+            setLayer(index - 1, ntl);
+            removeLayer(index);
         }
-        catch (CloneNotSupportedException e) {
-            e.printStackTrace();
-            return;
-        }
-
-        getLayer(index).mergeOnto(ntl);
-        setLayer(index - 1, ntl);
-        removeLayer(index);
     }
     
     /**
@@ -220,11 +231,10 @@ public class MultilayerPlane implements Iterable<MapLayer>
      *         bounds
      */
     public MapLayer getLayer(int i) {
-        try {
-            return layers.get(i);
-        } catch (ArrayIndexOutOfBoundsException e) {
+        if (i<0 || i>=layers.size()) {
+            return null;
         }
-        return null;
+        return layers.get(i);
     }
 
     /**
@@ -237,32 +247,33 @@ public class MultilayerPlane implements Iterable<MapLayer>
     }
 
     /**
-     * Resizes this plane. The (dx, dy) pair determines where the original
-     * plane should be positioned on the new area. Only layers that exactly
-     * match the bounds of the map are resized, any other layers are moved by
-     * the given shift.
-     * This method will resize all layers first (if there are any) and then
-     * call <code>resize(width,height)</code>
+     * Resizes this plane and all contained layers, provided they have the
+     * same bounds as this plane. Layers that do not match the bounds are only
+     * translated to the given new position (dx, dy) without resizing.
+     * <p>This method will handle all contained layers first (if there are any)
+     * and then call <code>resize(width,height)</code> on this plane.
      *
      * @see MapLayer#resize
      *
-     * @param width  The new width of the map.
-     * @param height The new height of the map.
-     * @param dx     The shift in x direction in tiles.
-     * @param dy     The shift in y direction in tiles.
+     * @param width  the new width of the map.
+     * @param height the new height of the map.
+     * @param dx     translation in x direction in tiles.
+     * @param dy     translation in y direction in tiles.
      */
-    public void resize(int width, int height, int dx, int dy) {
-        ListIterator<MapLayer> itr = getLayers();
-        while (itr.hasNext()) {
-            MapLayer layer = (MapLayer)itr.next();
-            if (layer.bounds.equals(bounds)) {
-                layer.resize(width, height, dx, dy);
-            } else {
-                layer.setOffset(layer.bounds.x + dx, layer.bounds.y + dy);
+    public void resize (int width, int height, int dx, int dy) {
+        synchronized ( layers ) {
+            ListIterator<MapLayer> itr = getLayers();
+            while (itr.hasNext()) {
+                MapLayer layer = (MapLayer)itr.next();
+                if (layer.bounds.equals(bounds)) {
+                    layer.resize(width, height, dx, dy);
+                } else {
+                    layer.setOffset(layer.bounds.x + dx, layer.bounds.y + dy);
+                }
             }
+            
+            resize(width, height);
         }
-        
-        resize(width, height);
     }
 
     /**
@@ -279,10 +290,10 @@ public class MultilayerPlane implements Iterable<MapLayer>
     }
     
     /**
-     * Determines wether the point (x,y) falls within the plane.
+     * Determines whether the point (x,y) falls within the plane.
      *
-     * @param x
-     * @param y
+     * @param x x-axis-coordinate
+     * @param y y-axis-coordinate
      * @return <code>true</code> if the point is within the plane,
      *         <code>false</code> otherwise
      */
@@ -290,7 +301,23 @@ public class MultilayerPlane implements Iterable<MapLayer>
         return x >= 0 && y >= 0 && x < bounds.width && y < bounds.height;
     }
 
+    /**
+     * Determines whether the point x falls within the plane.
+     *
+     * @param p <code>Point</code>
+     * @return <code>true</code> if the point is within the plane,
+     *         <code>false</code> otherwise
+     */
+    public boolean inBounds(Point p) {
+        return inBounds(p.x, p.y);
+    }
+
+    /** Returns an "unattached" iterator which allows concurrent layer list modification.
+     *  "Remove" on this iterator has no effect on the layers of this plane; for such purpose
+     *  use <code> getLayers()</code> instead!
+     */
+    @SuppressWarnings("unchecked")
     public Iterator<MapLayer> iterator() {
-        return layers.iterator();
+        return ((Vector<MapLayer>)layers.clone()).iterator();
     }
 }

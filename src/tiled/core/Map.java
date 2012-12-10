@@ -18,7 +18,7 @@ import tiled.mapeditor.Resources;
 
 /**
  * The Map class is the focal point of the <code>tiled.core</code> package.
- * This class also handles notifing listeners if there is a change to any layer
+ * This class also handles notifying listeners if there is a change to any layer
  * or object contained by the map.
  *
  * @version $Id$
@@ -35,15 +35,16 @@ public class Map extends MultilayerPlane implements MapLayerChangeListener
     public static final int MDO_SHIFTED = 5;
 
     private Vector<MapLayer> specialLayers;
-    private Vector<TileSet> tilesets;
+    private ArrayList<TileSet> tilesets;
     private LinkedList<MapObject> objects;
+    private final ArrayList<MapChangeListener> mapChangeListeners = new ArrayList<MapChangeListener>();
+    private final ArrayList<MapParallaxChangeListener> mapParallaxChangeListeners = new ArrayList<MapParallaxChangeListener>();
+    private Properties properties = new Properties();
 
-    private int tileWidth, tileHeight;
     private int orientation = MDO_ORTHO;
-    private final List<MapChangeListener> mapChangeListeners = new LinkedList<MapChangeListener>();
-    private final List<MapParallaxChangeListener> mapParallaxChangeListeners = new LinkedList<MapParallaxChangeListener>();
-    private Properties properties;
     private String filename;
+    private int tileWidth;
+    private int tileHeight;
     private float eyeDistance = 100;
     private int viewportWidth = 640;
     private int viewportHeight = 480;
@@ -55,8 +56,7 @@ public class Map extends MultilayerPlane implements MapLayerChangeListener
     public Map(int width, int height) {
         super(width, height);
 
-        properties = new Properties();
-        tilesets = new Vector<TileSet>();
+        tilesets = new ArrayList<TileSet>();
         specialLayers = new Vector<MapLayer>();
         objects = new LinkedList<MapObject>();
     }
@@ -69,7 +69,11 @@ public class Map extends MultilayerPlane implements MapLayerChangeListener
      * @see MapChangeListener#mapChanged(MapChangedEvent)
      */
     public void addMapChangeListener(MapChangeListener listener) {
-        mapChangeListeners.add(listener);
+        synchronized ( mapChangeListeners ) {
+            if ( !mapChangeListeners.contains(listener) ) {
+                mapChangeListeners.add(listener);
+            }
+        }
     }
 
     /**
@@ -77,59 +81,71 @@ public class Map extends MultilayerPlane implements MapLayerChangeListener
      * @param listener the listener to remove
      */
     public void removeMapChangeListener(MapChangeListener listener) {
-        mapChangeListeners.remove(listener);
+        synchronized ( mapChangeListeners ) {
+             mapChangeListeners.remove(listener);
+        }
     }
 
     public void addMapParallaxChangeListener(MapParallaxChangeListener listener){
-        mapParallaxChangeListeners.add(listener);
+        synchronized ( mapParallaxChangeListeners ) {
+            if ( !mapParallaxChangeListeners.contains(listener) ) {
+                mapParallaxChangeListeners.add(listener);
+            }
+        }
     }
     
     public void removeMapParallaxChangeListener(MapParallaxChangeListener listener){
-        mapParallaxChangeListeners.remove(listener);
+        synchronized ( mapParallaxChangeListeners ) {
+            mapParallaxChangeListeners.remove(listener);
+        }
     }
     
+    protected Iterable<MapChangeListener> getMapChangeListenerIterable () {
+        synchronized (mapChangeListeners) {
+            // clone mapChangeListeners first, because otherwise we'll get
+            // concurrent modification exceptions if a listener calls something
+            // that add or removes listeners
+            @SuppressWarnings("unchecked")
+            Iterable<MapChangeListener> mapChangeListenersClone = 
+                    (ArrayList<MapChangeListener>) mapChangeListeners.clone();
+            return mapChangeListenersClone;
+        }
+    }
         
     /**
      * Notifies all registered map change listeners about a change.
      */
     protected void fireMapChanged() {
-        MapChangedEvent event = null;
-        // clone mapChangeListeners first, because otherwise we'll get
-        // concurrent modification exceptions if a listener calls something
-        // that add or removes listeners
-        Iterable<MapChangeListener> mapChangeListenersClone = new Vector<MapChangeListener>(mapChangeListeners);
-
-        for(MapChangeListener l : mapChangeListenersClone) {
-            if (event == null)
-                event = new MapChangedEvent(this);
+        MapChangedEvent event = new MapChangedEvent(this);
+        for(MapChangeListener l : getMapChangeListenerIterable()) {
             l.mapChanged(event);
         }
     }
     
     protected void fireLayerRemoved(int layerIndex){
         MapChangedEvent e = new MapChangedEvent(this, layerIndex); 
-        for(MapChangeListener l : mapChangeListeners){
+        for(MapChangeListener l : getMapChangeListenerIterable()){
             l.layerRemoved(e);
         }
     }
 
     protected void fireLayerAdded(int layerIndex){
         MapChangedEvent e = new MapChangedEvent(this, layerIndex); 
-        for(MapChangeListener l : mapChangeListeners){
+        for(MapChangeListener l : getMapChangeListenerIterable()){
             l.layerAdded(e);
         }
     }
     
     protected void fireLayerMoved(int oldLayerIndex, int newLayerIndex){
         MapChangedEvent e = new MapChangedEvent(this, newLayerIndex, oldLayerIndex);
-        for(MapChangeListener l : mapChangeListeners){
+        for(MapChangeListener l : getMapChangeListenerIterable()){
             l.layerMoved(e);
         }
     }
     
     protected void fireLayerChanged(int layerIndex, MapLayerChangeEvent mlce){
         MapChangedEvent e = new MapChangedEvent(this, layerIndex);
-        for(MapChangeListener l : mapChangeListeners)
+        for(MapChangeListener l : getMapChangeListenerIterable())
             l.layerChanged(e, mlce);
     }
     /**
@@ -139,13 +155,9 @@ public class Map extends MultilayerPlane implements MapLayerChangeListener
      * @param index the index of the removed tileset
      */
     protected void fireTilesetRemoved(int index) {
-        Iterator<MapChangeListener> iterator = mapChangeListeners.iterator();
-        MapChangedEvent event = null;
-
-        while (iterator.hasNext()) {
-            if (event == null) event = new MapChangedEvent(this);
-            ((MapChangeListener) iterator.next()).tilesetRemoved(event, index);
-        }
+        MapChangedEvent e = new MapChangedEvent(this);
+        for(MapChangeListener l : getMapChangeListenerIterable())
+            l.tilesetRemoved(e, index);
     }
 
     /**
@@ -155,13 +167,9 @@ public class Map extends MultilayerPlane implements MapLayerChangeListener
      * @param tileset the new tileset
      */
     protected void fireTilesetAdded(TileSet tileset) {
-        Iterator<MapChangeListener> iterator = mapChangeListeners.iterator();
-        MapChangedEvent event = null;
-
-        while (iterator.hasNext()) {
-            if (event == null) event = new MapChangedEvent(this);
-            ((MapChangeListener) iterator.next()).tilesetAdded(event, tileset);
-        }
+        MapChangedEvent e = new MapChangedEvent(this);
+        for(MapChangeListener l : getMapChangeListenerIterable())
+            l.tilesetAdded(e, tileset);
     }
 
     /**
@@ -169,15 +177,26 @@ public class Map extends MultilayerPlane implements MapLayerChangeListener
      * tilesets.
      */
     protected void fireTilesetsSwapped(int index0, int index1) {
-        Iterator<MapChangeListener> iterator = mapChangeListeners.iterator();
-        MapChangedEvent event = null;
+        MapChangedEvent e = new MapChangedEvent(this);
+        for(MapChangeListener l : getMapChangeListenerIterable())
+            l.tilesetsSwapped(e, index0, index1);
+    }
 
-        while (iterator.hasNext()) {
-            if (event == null) event = new MapChangedEvent(this);
-            ((MapChangeListener) iterator.next()).tilesetsSwapped(event, index0, index1);
+    @SuppressWarnings("unchecked")
+    void fireParallaxChangeEvent(MapParallaxChangeEvent mapParallaxChangeEvent) {
+        Iterable<MapParallaxChangeListener> listClone; 
+        synchronized (mapParallaxChangeListeners) {
+            listClone = (ArrayList<MapParallaxChangeListener>) mapParallaxChangeListeners.clone();
+        }
+        for(MapParallaxChangeListener l : listClone){
+            l.parallaxParameterChanged(mapParallaxChangeEvent);
         }
     }
 
+    public void layerChanged(MapLayer layer, MapLayerChangeEvent e) {
+        fireLayerChanged(findLayerIndex(layer), e);
+    }
+    
     /**
      * Causes a MapChangedEvent to be fired.
      */
@@ -223,10 +242,13 @@ public class Map extends MultilayerPlane implements MapLayerChangeListener
     }
 
     public void setLayer(int index, MapLayer layer) {
+        boolean isNew = index == getTotalLayers(); 
         layer.setMap(this);
         super.setLayer(index, layer);
         fireMapChanged();
-        fireLayerRemoved(index);
+        if ( !isNew ) {
+            fireLayerRemoved(index);
+        }
         fireLayerAdded(index);
     }
 
@@ -240,14 +262,14 @@ public class Map extends MultilayerPlane implements MapLayerChangeListener
         MapLayer layer = new ObjectGroup(this);
         layer.setName(Resources.getString("general.objectgroup.objectgroup") +
                       " " + super.getTotalLayers());
-        super.addLayer(layer);
         fireMapChanged();
+        super.addLayer(layer);
         return layer;
     }
 
     /**
-     * Adds a Tileset to this Map. If the set is already attached to this map,
-     * <code>addTileset</code> simply returns.
+     * Adds a Tileset to this Map. Does nothing if <code>tileset</code> is <b>null</b> or already 
+     * attached to this map.
      *
      * @param tileset a tileset to add
      */
@@ -451,12 +473,13 @@ public class Map extends MultilayerPlane implements MapLayerChangeListener
     }
 
     /**
-     * Returns a vector with the currently loaded tilesets.
+     * Returns a list with the currently loaded tilesets.
      *
-     * @return Vector
+     * @return <code>List</code>
      */
-    public Vector<TileSet> getTilesets() {
-        return tilesets;
+    @SuppressWarnings("unchecked")
+    public List<TileSet> getTilesets() {
+        return (ArrayList<TileSet>)tilesets.clone();
     }
 
     /**
@@ -632,15 +655,5 @@ public class Map extends MultilayerPlane implements MapLayerChangeListener
     public void setViewportHeight(int h) {
         viewportHeight = h;
     }
-    
-    void fireParallaxChangeEvent(MapParallaxChangeEvent mapParallaxChangeEvent) {
-        for(MapParallaxChangeListener l : mapParallaxChangeListeners){
-            l.parallaxParameterChanged(mapParallaxChangeEvent);
-        }
-    }
 
-    public void layerChanged(MapLayer layerIndex, MapLayerChangeEvent e) {
-        fireLayerChanged(findLayerIndex(layerIndex), e);
-    }
-    
 }
